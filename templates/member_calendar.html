@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Contribution Calendar - Sunday Savings</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand font-weight-bold" href="{{ url_for('member_dashboard') }}">☀️ Sunday Savings Portal</a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text text-white me-3">Welcome, @{{ username }}</span>
+                <a class="btn btn-outline-danger btn-sm" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 800px;">
+        
+        <!-- Back Navigation Button -->
+        <a href="{{ url_for('member_dashboard') }}" class="btn btn-sm btn-outline-secondary mb-3">← Back to Dashboard</a>
+
+        <!-- 📅 SUNDAY CONTRIBUTION CALENDAR MATRIX VIEW CARD -->
+        <div class="card shadow border-0 rounded-3">
+            <div class="card-header bg-secondary text-white fw-bold p-3">
+                📅 Monthly Contribution Tracker Grid — {{ current_month }} {{ current_year }}
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted small mb-4">Monitor your detailed weekly savings progress and audit any logged or missed transactions for the current calendar cycle.</p>
+                <div class="row row-cols-1 row-cols-sm-2 g-3">
+                    {% for day in matrix %}
+                    <div class="col">
+                        {% if day.status == 'PAID' %}
+                            <div class="p-3 rounded border d-flex align-items-center justify-content-between bg-success-subtle border-success-subtle text-success">
+                                <span class="fw-semibold small">{{ day.display_label }}</span>
+                                <span class="badge bg-success">✓ Paid</span>
+                            </div>
+                        {% elif day.status == 'FUTURE' %}
+                            <div class="p-3 rounded border d-flex align-items-center justify-content-between bg-light border-secondary-subtle text-secondary">
+                                <span class="fw-semibold small">{{ day.display_label }}</span>
+                                <span class="badge bg-secondary">⏳ Upcoming</span>
+                            </div>
+                        {% else %}
+                            <div class="p-3 rounded border d-flex align-items-center justify-content-between bg-danger-subtle border-danger-subtle text-danger">
+                                <span class="fw-semibold small">{{ day.display_label }}</span>
+                                <span class="badge bg-danger">✗ Missed</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

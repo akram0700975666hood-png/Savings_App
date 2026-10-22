@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - Sunday Savings</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand font-weight-bold" href="{{ url_for('admin_dashboard') }}">☀️ Sunday Savings System</a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text text-white me-3">Welcome, {{ username }} (Admin)</span>
+                <a class="btn btn-outline-danger btn-sm" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 600px;">
+        
+        <!-- Back Navigation Button -->
+        <a href="{{ url_for('view_members') }}" class="btn btn-sm btn-outline-secondary mb-3">← Back to Profiles Ledger</a>
+
+        <!-- Flash Message Banners -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm mb-4" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Profile Modification Card -->
+        <div class="card shadow border-0 rounded-3">
+            <div class="card-header bg-secondary text-white fw-bold p-3">
+                ✏️ Edit Member Profile Details — @{{ member.username }}
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ url_for('edit_member', target_user_id=member.user_id) }}" method="POST">
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">System User ID (Read-Only)</label>
+                        <input type="text" class="form-control bg-light text-secondary fw-bold" value="#{{ member.user_id }}" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Account Username (Read-Only)</label>
+                        <input type="text" class="form-control bg-light text-secondary" value="{{ member.username }}" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="full_name" class="form-label small fw-semibold">Registered Full Name</label>
+                        <input type="text" id="full_name" name="full_name" class="form-control" value="{{ member.full_name }}" required placeholder="Enter complete legal name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="contact_info" class="form-label small fw-semibold">Primary Contact (Email address or Phone)</label>
+                        <input type="text" id="contact_info" name="contact_info" class="form-control" value="{{ member.contact_info }}" required placeholder="e.g. member@gmail.com or phone parameters">
+                        <div class="form-text small text-muted" style="font-size: 0.75rem;">Make sure this maps to a valid email token container if you want them to receive system payout statements.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="next_of_kin_info" class="form-label small fw-semibold">Next of Kin Contact Details (Optional)</label>
+                        <input type="text" id="next_of_kin_info" name="next_of_kin_info" class="form-control" value="{{ member.next_of_kin_info if member.next_of_kin_info else '' }}" placeholder="Enter emergency emergency relationship mapping details">
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="role" class="form-label small fw-semibold">System Access Role Group</label>
+                        <select id="role" name="role" class="form-select" required>
+                            <option value="member" {% if member.role|lower == 'member' %}selected{% endif %}>Standard Group Member</option>
+                            <option value="admin" {% if member.role|lower == 'admin' %}selected{% endif %}>Administrative Manager</option>
+                        </select>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary fw-bold p-2">💾 Save Profile Modifications</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

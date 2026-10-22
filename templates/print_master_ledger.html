@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Annual Master Ledger Report - Sunday Savings</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: #fff !important; font-size: 12px; }
+            .card { border: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-light py-4">
+
+    <div class="container no-print mb-4" style="max-width: 900px;">
+        <div class="d-flex justify-content-between align-items-center bg-dark text-white p-3 rounded shadow-sm">
+            <span>🖨️ Master System Ledger Audit Report Preview Component</span>
+            <div>
+                <button onclick="window.print();" class="btn btn-success btn-sm fw-bold me-2">Print Master Audit / Export PDF</button>
+                <a href="javascript:window.history.back();" class="btn btn-outline-light btn-sm">Close Report</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container p-4 bg-white rounded shadow-sm card" style="max-width: 900px; min-height: 297mm;">
+        <!-- Corporate Title Structure Block -->
+        <div class="row border-bottom pb-3 mb-4 text-center">
+            <h2 class="fw-bold text-dark mb-1">☀️ SUNDAY SAVINGS MANAGEMENT SYSTEM</h2>
+            <h4 class="text-muted text-uppercase tracking-wider small fw-bold">Annual Master Transactional Audit Ledger</h4>
+            <small class="text-muted small">Report Generation System Timestamp: {{ generation_time }}</small>
+        </div>
+
+        <!-- Master Statistics Highlights Box Grid Components -->
+        <div class="row mb-4 bg-dark text-white p-3 rounded g-3 mx-0 align-items-center">
+            <div class="col-6">
+                <span class="text-uppercase small text-white-50 d-block fw-semibold">Total Audited Contribution Interations</span>
+                <strong class="fs-4">{{ logs|length }} Active Transaction Rows Logged</strong>
+            </div>
+            <div class="col-6 text-end">
+                <span class="text-uppercase small text-white-50 d-block fw-semibold">Aggregate Group Pool Savings reserves</span>
+                <h2 class="text-warning fw-bold mb-0">UGX {{ "{:,.0f}".format(pool_sum) }}</h2>
+            </div>
+        </div>
+
+        <!-- Master Transaction Loop Log Table Component -->
+        <table class="table table-striped table-hover table-bordered align-middle">
+            <thead class="table-secondary text-uppercase small font-weight-bold">
+                <tr>
+                    <th class="text-center">TX ID</th>
+                    <th>Post Timestamp</th>
+                    <th>Member Profile</th>
+                    <th class="text-end">Amount Paid</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if logs %}
+                    {% for row in logs %}
+                    <tr>
+                        <td class="text-center text-muted fw-bold small">#{{ row.deposit_id }}</td>
+                        <td class="text-muted small">{{ row.deposit_date }}</td>
+                        <td>
+                            <strong class="text-dark d-block mb-0">{{ row.full_name }}</strong>
+                            <small class="text-muted small">@{{ row.username }}</small>
+                        </td>
+                        <td class="text-end text-success fw-bold">UGX {{ "{:,.0f}".format(row.amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">No transactional ledger entry points found inside active table rows.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <!-- Master Signature Line Audit Approvals Box Row Components -->
+        <div class="row mt-5 pt-5 mx-0">
+            <div class="col-4 text-center">
+                <div style="border-top: 1px solid #ced4da; width: 80%; margin: 0 auto;" class="pt-2">
+                    <small class="text-muted d-block fw-semibold">Prepared By: Coadmin Clerk</small>
+                </div>
+            </div>
+            <div class="col-4 text-center"></div>
+            <div class="col-4 text-center">
+                <div style="border-top: 1px solid #ced4da; width: 80%; margin: 0 auto;" class="pt-2">
+                    <small class="text-muted d-block fw-semibold">Authorized Signatory: Superadmin</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

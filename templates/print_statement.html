@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Financial Statement - {{ profile.full_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: #fff !important; font-size: 13px; }
+            .card { border: none !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-light py-4">
+
+    <div class="container no-print mb-4" style="max-width: 800px;">
+        <div class="d-flex justify-content-between align-items-center bg-dark text-white p-3 rounded shadow-sm">
+            <span>🖨️ Bank Statement Preview Interface Component</span>
+            <div>
+                <button onclick="window.print();" class="btn btn-success btn-sm fw-bold me-2">Execute Page Print / Save PDF</button>
+                <a href="javascript:window.history.back();" class="btn btn-outline-light btn-sm">Close Statement</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container p-4 bg-white rounded shadow-sm card" style="max-width: 800px; min-height: 297mm;">
+        <!-- Institutional Header Header -->
+        <div class="row border-bottom pb-3 mb-4 align-items-center">
+            <div class="col-6">
+                <h3 class="fw-bold text-dark mb-1">☀️ SUNDAY SAVINGS SYSTEM</h3>
+                <small class="text-muted d-block">Kampala Central Financial Ledger Portal</small>
+            </div>
+            <div class="col-6 text-end">
+                <h5 class="text-muted fw-bold mb-0">OFFICIAL TRANSACTION STATEMENT</h5>
+                <small class="text-muted small">Generated: {{ generation_time }}</small>
+            </div>
+        </div>
+
+        <!-- Account Holder Profile Grid Info Components -->
+        <div class="row mb-4 bg-light p-3 rounded g-3 mx-0">
+            <div class="col-6">
+                <span class="text-uppercase small text-muted d-block fw-semibold">Account Holder Details</span>
+                <strong class="fs-5 text-dark">{{ profile.full_name }}</strong>
+                <small class="d-block text-muted">ID Identifier String: @{{ profile.username }}</small>
+            </div>
+            <div class="col-6 text-end">
+                <span class="text-uppercase small text-muted d-block fw-semibold">Net Running Balance</span>
+                <h3 class="text-success fw-bold mb-0">UGX {{ "{:,.0f}".format(total_saved) }}</h3>
+                <span class="badge bg-success-subtle text-success">Account Status: Active</span>
+            </div>
+        </div>
+
+        <!-- Chronological Ledger Records Data Matrix Sheet Table -->
+        <table class="table table-striped align-middle mb-4">
+            <thead class="table-dark">
+                <tr>
+                    <th class="ps-3 py-2">Transaction Post Date</th>
+                    <th class="py-2">Type Descriptor</th>
+                    <th class="pe-3 py-2 text-end">Contribution Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if transactions %}
+                    {% for tx in transactions %}
+                    <tr>
+                        <td class="ps-3 text-muted">{{ tx.deposit_date }}</td>
+                        <td><span class="fw-semibold text-dark">Weekly Sunday Deposit Roll</span></td>
+                        <td class="pe-3 text-end text-success fw-bold">UGX {{ "{:,.0f}".format(tx.amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center py-4 text-muted small">No dynamic active transactions logged for this saving account statement period.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <!-- Summary Footer Disclosure Segment -->
+        <div class="mt-auto border-top pt-3 text-center text-muted small">
+            <p class="mb-1">This statement serves as an authentic tracking output reflection of financial blocks updated inside sunday_savings_db.</p>
+            <small class="text-muted italic">☀️ Sunday Savings System — End of Profile Ledger Statement Report ☀️</small>
+        </div>
+    </div>
+
+</body>
+</html>

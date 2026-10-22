@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunday Savings System - Login</title>
+    <!-- Importing Bootstrap layout styles directly via secure CDN link -->
+    <link href="https://jsdelivr.net" rel="stylesheet">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center vh-100">
+
+    <div class="container" style="max-width: 450px;">
+        <!-- Visual Card Wrapper -->
+        <div class="card shadow border-0 rounded-3">
+            <div class="card-body p-5 text-center">
+                
+                <!-- System Visual Header -->
+                <div class="mb-4">
+                    <h2 class="fw-bold text-success m-0">☀️ SUNDAY SAVINGS</h2>
+                    <small class="text-muted text-uppercase tracking-wider">Tracking System Portal</small>
+                </div>
+
+                <!-- Live Dynamic Warning Notifications Block -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show p-2 small mb-3" role="alert">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Main Login Web Form Submit Gateway -->
+                <form action="/login" method="POST">
+                    
+                    <!-- Username Input Box Group -->
+                    <div class="form-floating mb-3 text-start">
+                        <input type="text" class="form-control" id="usernameInput" name="username" placeholder="Username" required>
+                        <label for="usernameInput">Enter Username</label>
+                    </div>
+
+                    <!-- Secure Password Input Box Group -->
+                    <div class="form-floating mb-4 text-start">
+                        <input type="password" class="form-control" id="passwordInput" name="password" placeholder="Password" required>
+                        <label for="passwordInput">Enter Password</label>
+                    </div>
+
+                    <!-- Secure Submission Authentication Trigger Button -->
+                    <button type="submit" class="btn btn-success w-100 py-3 fw-bold rounded-3 shadow-sm">
+                        Secure Secure Sign In
+                    </button>
+                    
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Core JS Scripts -->
+    <script src="https://jsdelivr.net"></script>
+</body>
+</html>

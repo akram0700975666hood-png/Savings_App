@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Profiles - Sunday Savings</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand font-weight-bold" href="{{ url_for('admin_dashboard') }}">☀️ Sunday Savings System</a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text text-white me-3">Welcome, {{ username }} (Admin)</span>
+                <a class="btn btn-outline-danger btn-sm" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        
+        <!-- Back Link Navigation -->
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-secondary mb-3">← Back to Dashboard</a>
+        
+        <!-- Flash Message Banners -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm mb-4" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+                <!-- Profiles Audit Table Card Layout -->
+        <div class="card shadow border-0 rounded-3">
+            <div class="card-header bg-secondary text-white p-3 fw-bold">
+                👥 Registered System Member Profiles
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">User ID</th>
+                                <th>Username</th>
+                                <th>Primary Contact</th>
+                                <th>Next of Kin (Optional)</th>
+                                <th>System Role</th>
+                                <th>Account Status</th>
+                                <th>Connection State</th>
+                                <th class="pe-4 text-end">Actions</th>
+                            </tr>
+                        </thead>
+                                                <tbody>
+                            {% for member in members %}
+                            <tr>
+                                <td class="ps-4 fw-bold text-secondary">#{{ member.user_id }}</td>
+                                <td>{{ member.username }}</td>
+                                <td>
+                                    {% if member.contact_info and member.contact_info != 'No Contact' %}
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span>{{ member.contact_info }}</span>
+                                            {% if '@' not in member.contact_info %}
+                                                <a href="https://wa.me{{ member.contact_info|replace(' ', '')|replace('+', '') }}" target="_blank" class="btn btn-xs btn-success py-0 px-1 font-weight-bold" style="font-size: 0.7rem; text-decoration: none;" title="Send WhatsApp missing contribution alert">
+                                                    💬 Chat
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">No Contact</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <!-- Optimized Next of Kin visual badge parameters -->
+                                    {% if member.next_of_kin_info %}
+                                        <span class="text-dark fw-medium" style="font-size: 0.85rem;">
+                                            {{ member.next_of_kin_info }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-light text-muted border border-secondary-subtle font-weight-normal" style="font-size: 0.75rem;">
+                                            None Listed
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ member.role }}</span>
+                                </td>
+                                <td>
+                                    {% if member.account_status|lower == 'active' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                    {% elif member.account_status|lower == 'suspended' %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Suspended</span>
+                                    {% else %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if member.is_online == 1 %}
+                                        <span class="badge bg-success">● Online</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">○ Offline</span>
+                                    {% endif %}
+                                </td>
+                                                                <td class="pe-4 text-end">
+                                    <!-- ⚙️ UNIFIED CONTEXTUAL ACTIONS DROPDOWN MENUS CONTAINER -->
+                                    <div class="dropdown d-inline-block">
+                                        <!-- Configured to use a fixed positioning strategy to completely overlay above table borders -->
+                                        <button class="btn btn-sm btn-outline-dark dropdown-toggle fw-bold" type="button" id="actionsMenu{{ member.user_id }}" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy": "fixed"}' aria-expanded="false" style="font-size: 0.8rem; padding: 4px 10px;">
+                                            ⚙️ Actions
+                                        </button>
+                                        <!-- Removed explicit inline display: none; to let Bootstrap toggle visibility states properly -->
+                                        <ul class="dropdown-menu dropdown-menu-end shadow border border-light p-2" aria-labelledby="actionsMenu{{ member.user_id }}" style="min-width: 215px; font-size: 0.85rem; z-index: 9999 !important;">
+
+                                            <!-- Core Profile Navigation Links -->
+                                            <li>
+                                                <a class="dropdown-item rounded-2 py-2 fw-semibold text-dark" href="{{ url_for('edit_member', target_user_id=member.user_id) }}">
+                                                    ✏️ Edit Profile Details
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item rounded-2 py-2 fw-semibold text-primary" href="{{ url_for('view_member_statement', target_user_id=member.user_id) }}">
+                                                    📊 View Contribution Statement
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item rounded-2 py-2 fw-semibold text-secondary" href="{{ url_for('admin_member_calendar', target_user_id=member.user_id) }}">
+                                                    🗓️ View Sunday Tracker Calendar
+                                                </a>
+                                            </li>
+                                            
+                                            <li><hr class="dropdown-divider opacity-25"></li>
+                                            
+                                            <!-- System State Access Modifications -->
+                                            <li>
+                                                <form action="{{ url_for('toggle_member_status', target_user_id=member.user_id) }}" method="POST" onsubmit="return confirm('Modify system access permissions for @{{ member.username }}?');" class="m-0">
+                                                    {% if member.account_status|lower == 'active' %}
+                                                        <button type="submit" class="dropdown-item rounded-2 py-2 fw-semibold text-danger">🔒 Suspend Account Access</button>
+                                                    {% else %}
+                                                        <button type="submit" class="dropdown-item rounded-2 py-2 fw-semibold text-success">🔓 Activate Account Access</button>
+                                                    {% endif %}
+                                                </form>
+                                            </li>
+                                            
+                                            <li><hr class="dropdown-divider opacity-25"></li>
+                                            
+                                            <!-- Administrative Password Encryption Overwrite Form Box -->
+                                            <li class="px-2 py-1">
+                                                <form action="{{ url_for('admin_reset_password', target_user_id=member.user_id) }}" method="POST" onsubmit="return confirm('Force overwrite the access password for @{{ member.username }}?');" class="m-0">
+                                                    <label class="form-label text-muted small fw-semibold mb-1" style="font-size: 0.72rem;">Force Password Reset:</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="text" name="new_temporary_password" class="form-control form-control-sm" placeholder="New pass" required style="font-size: 0.75rem;">
+                                                        <button type="submit" class="btn btn-warning fw-bold" style="font-size: 0.75rem;">🔑 Overwrite</button>
+                                                    </div>
+                                                </form>
+                                            </li>
+                                            
+                                            <li><hr class="dropdown-divider opacity-25"></li>
+                                            
+                                            <!-- Dangerous Permanent Deletion Module -->
+                                            <li>
+                                                <form action="{{ url_for('delete_member', target_user_id=member.user_id) }}" method="POST" onsubmit="return confirm('WARNING: Permanent deletion cannot be undone!');" class="m-0">
+                                                    <button type="submit" class="dropdown-item rounded-2 py-2 fw-bold text-danger bg-danger-subtle">
+                                                        🗑️ Delete Account Permanently
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bootstrap Bundle JS Script Tag Syntax Integrated Cleanly -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
