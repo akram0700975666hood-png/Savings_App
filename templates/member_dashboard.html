@@ -3,201 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Member Dashboard - Sunday Savings</title>
+    <title>Member Savings Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .metric-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .toggle-btn {
+            cursor: pointer;
+            user-select: none;
+        }
+        .toggle-btn:hover {
+            opacity: 0.8;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
-        <div class="container">
-            <a class="navbar-brand font-weight-bold" href="#">☀️ Sunday Savings Portal</a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text text-white me-3">Welcome, @{{ username }}</span>
-                <a class="btn btn-outline-danger btn-sm" href="{{ url_for('logout') }}">Logout</a>
+    <!-- Member System Global Navigation Header Ribbon -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">👋 Sunday Savings Portal</a>
+            <div class="collapse navbar-collapse" id="memberNavbar">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item">
+                        <span class="navbar-text text-white me-3 fw-semibold">Welcome, {{ username }}</span>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/logout" class="btn btn-outline-light btn-sm px-3">Secure Exit</a>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container pb-5">
         
-        <!-- Flash Message Banners -->
+        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm mb-4" role="alert">
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show border-0 shadow-sm" role="alert">
                         {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <!-- 🔔 LIVE SYSTEM DIRECT NOTIFICATIONS ENGINE BANNER WRAPPER -->
-        {% if notifications %}
-            <div class="mb-4">
-                {% for notif in notifications %}
-                    <div class="alert alert-warning border border-warning-subtle shadow-sm d-flex align-items-center justify-content-between p-3 rounded-3 fade show" role="alert">
-                        <div class="d-flex align-items-start gap-2">
-                            <span class="fs-4">📢</span>
-                            <div>
-                                <div class="fw-bold text-dark small" style="font-size: 0.82rem;">System Administrator Dispatch Announcement</div>
-                                <div class="text-secondary mt-1" style="font-size: 0.92rem;">{{ notif.alert_message }}</div>
-                                <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">Issued Log Timestamp: {{ notif.created_at }}</small>
-                            </div>
-                        </div>
+        <!-- Informational Banner -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-white border-0 shadow-sm rounded p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                         <div>
-                            <!-- Action Dismiss Form Pointing to our internal /member/notifications/read/<id> controller -->
-                            <form action="{{ url_for('dismiss_notification', notification_id=notif.notification_id) }}" method="POST" class="m-0">
-                                <button type="submit" class="btn btn-sm btn-outline-dark fw-bold py-1 px-2" style="font-size: 0.78rem;">
+                            <h2 class="text-dark fw-bold mb-1">My Savings Workspace Center</h2>
+                            <p class="text-muted mb-0">Track your weekly transaction logs, file grievances, and monitor your personal growth.</p>
+                        </div>
+                        <div class="text-md-end">
+                            <span class="badge bg-secondary p-2 shadow-sm font-monospace" style="font-size: 0.9rem;">
+                                Calendar Cycle Status: Active
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- REAL-TIME ADMINISTRATIVE NOTIFICATION BANNERS GRID ENGINE         -->
+        <!-- ================================================================= -->
+        {% if notifications %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    {% for note in notifications %}
+                        <div class="alert alert-warning border-0 shadow-sm d-flex justify-content-between align-items-center p-3 mb-2 animate fade show" role="alert">
+                            <div class="d-flex align-items-center">
+                                <span class="fs-4 me-3">📢</span>
+                                <div>
+                                    <strong class="text-dark d-block mb-1">Administrative Broadcaster Alert</strong>
+                                    <!-- FIX: Changed from note.message to note.alert_message to match your exact database columns -->
+                                    <span class="text-secondary small font-monospace fw-bold">{{ note.alert_message }}</span>
+                                </div>
+                            </div>
+                            <!-- Inline Click-to-Dismiss Form Button Trigger Block -->
+                            <!-- FIX: Pointing the action loop precisely to match your notification_id primary column key -->
+                            <form action="/member/notification/dismiss/{{ note.notification_id }}" method="POST" class="m-0">
+                                <button type="submit" class="btn btn-sm btn-dark fw-bold px-3 shadow-sm" title="Dismiss notice message permanently">
                                     ✓ Clear Alert
                                 </button>
                             </form>
                         </div>
-                    </div>
-                {% endfor %}
+                    {% endfor %}
+                </div>
             </div>
         {% endif %}
+        <!-- ================================================================= -->
 
-        <div class="row g-4">
-                                <!-- Left Side Dashboard Content -->
-            <div class="col-md-7">
-                
-                <!-- 🛡️ OPTIMIZED FINANCIAL SUMMARY WITH PRIVACY TOGGLE GUARD -->
-                <div class="card card-body shadow border-0 p-4 mb-4 bg-primary text-white rounded-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <h6 class="text-uppercase tracking-wider opacity-75 small mb-0">My Accumulated running Pool Balance</h6>
-                        <button type="button" id="balanceToggleBtn" class="btn btn-sm btn-light border-0 fw-bold py-1 px-2 text-primary" style="font-size: 0.8rem;" onclick="toggleBalancePrivacy()">
-                            👁️ Show Balance
-                        </button>
-                    </div>
-                    <h2 class="display-5 fw-bold mb-0 mt-2" id="maskedBalanceDisplay" data-true-value="UGX {{ '{:,.0f}'.format(my_savings) }}">
-                        ••••••••••
-                    </h2>
-                </div>
 
-                <!-- 🗓️ COMPACT CALENDAR SHORTCUT LINK CARD -->
-                <div class="card shadow border-0 rounded-3 mb-4">
-                    <div class="card-header bg-secondary text-white fw-bold p-3">
-                        🗓️ Sunday Savings Progress Tracker
-                    </div>
-                    <div class="card-body p-4 text-center">
-                        <p class="text-muted small">Review your calendar cycle metrics sheet to monitor paid, missed, or upcoming deposit weeks.</p>
-                        <div class="d-grid">
-                            <a href="{{ url_for('view_my_calendar') }}" class="btn btn-outline-secondary fw-bold">
-                                📅 View My Contribution Tracker Grid
-                            </a>
+
+        <!-- Financial Status Metrics Grid -->
+        <div class="row g-4 mb-4">
+            
+            <!-- Total Accumulated Personal Savings Pool Metric Balance Column Card -->
+            <div class="col-md-6">
+                <div class="card metric-card border-0 shadow-sm bg-white h-100">
+                    <div class="card-body p-4 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-secondary fw-semibold">Total Cumulative Savings</span>
+                            <!-- UPDATED BUTTON: Uses an inner span to toggle the icon state dynamically -->
+                            <span class="toggle-btn btn btn-sm btn-light border fw-semibold" id="eyeToggleShield" onclick="togglePrivacyShield();" title="Toggle Balance Privacy Shield">
+                                <span id="toggleIconSlot">👁️</span> Show/Mask
+                            </span>
+                        </div>
+                        <div>
+                            <!-- Raw Value Holder Mask Node Elements for JavaScript Manipulation Loops -->
+                            <h1 class="fw-bold text-success mb-2" id="displayBalanceTokens">UGX {{ "{:,}".format(total_savings) }}</h1>
+                            <input type="hidden" id="rawSavingsValueText" value="UGX {{ "{:,}".format(total_savings) }}">
+                            <p class="text-muted small mb-0">Total amount contributed by your account across all Sunday milestones.</p>
                         </div>
                     </div>
                 </div>
-
-                <!-- Detailed Financial Deposit Logs Current Month Minimal Table -->
-                <div class="card shadow border-0 rounded-3">
-                    <div class="card-header bg-dark text-white fw-bold p-3">
-                        📋 Current Month Contribution Entry Logs
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-4">Contribution Value</th>
-                                        <th>Target Sunday</th>
-                                        <th class="pe-4">Execution Timestamp</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% if history %}
-                                        {% for row in history %}
-                                        <tr>
-                                            <td class="ps-4 fw-bold text-success">UGX {{ "{:,.0f}".format(row.amount) }}</td>
-                                            <td>
-                                                <span class="badge bg-light text-dark border fw-medium">{{ row.target_sunday_date if row.target_sunday_date else 'Standard Logging' }}</span>
-                                            </td>
-                                            <td class="text-secondary small pe-4">{{ row.deposit_date }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    {% else %}
-                                        <tr>
-                                            <td colspan="3" class="text-center text-muted p-4">No transactional savings entries logged on this account during the current month cycle.</td>
-                                        </tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="p-3 bg-light border-top text-center">
-                            <a href="{{ url_for('view_full_history') }}" class="btn btn-sm btn-outline-dark fw-bold px-4">
-                                🔍 View Full Lifetime Transaction History Ledger
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
             </div>
 
-                        <!-- Right Side Dashboard Controls -->
-            <div class="col-md-5">
-                
-                <!-- Communication Complaint Form Card -->
-                <div class="card shadow border-0 rounded-3 mb-4">
-                    <div class="card-header bg-secondary text-white fw-bold p-3">
-                        ✉️ Submit Grievance or Complaint to Admins
-                    </div>
-                    <div class="card-body p-4">
-                        <form action="{{ url_for('member_dashboard') }}" method="POST">
-                            <div class="mb-3">
-                                <label for="complaint_message" class="form-label small fw-semibold">Your Message</label>
-                                <textarea id="complaint_message" name="complaint_message" class="form-control" rows="4" placeholder="Type your complaint text blocks details here..." required></textarea>
-                            </div>
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-outline-dark fw-bold">✉️ File Complaint Record</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
 
-                <!-- 🔐 SPACE-SAVING SECURITY NAVIGATION LINK CARD BLOCK -->
-                <div class="card shadow border-0 rounded-3 mb-4">
-                    <div class="card-header bg-dark text-white fw-bold p-3">
-                        🔐 Security Profile Settings
-                    </div>
-                    <div class="card-body p-4 text-center">
-                        <p class="text-muted small">Need to rotate your account access credentials? Manage your encryption keys safely using our secure portal channel.</p>
-                        <div class="d-grid">
-                            <a href="{{ url_for('change_password') }}" class="btn btn-primary fw-bold">
-                                🔑 Navigate to Password Key Update
-                            </a>
+                        <!-- Total System Grievance Communication Pipeline Tracker Column Card -->
+            <div class="col-md-6">
+                <div class="card metric-card border-0 shadow-sm bg-white h-100">
+                    <div class="card-body p-4 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-secondary fw-semibold">Filed Grievances & Help Tickets</span>
+                            <!-- RESTORED ACTION TRIGGER: Opens the clean popup modal interface safely -->
+                            <button class="btn btn-sm btn-outline-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#submitComplaintModal">
+                                ➕ File New Complaint
+                            </button>
+                        </div>
+                        <div>
+                            <h1 class="fw-bold text-dark mb-2">{{ total_complaints }}</h1>
+                            <p class="text-muted small mb-0">Total logged complaints submitted to the administrator panel for review.</p>
                         </div>
                     </div>
                 </div>
-
             </div>
-        </div> <!-- Closing tag for row grid container -->
 
-    </div> <!-- Closing tag for main viewport container -->
+
+        <!-- 🚫 NOTE: The graph canvas block has been completely removed from here! -->
+
+        <!-- Action Shortcuts Hub Links Layout Grid Row Panel -->
+        <div class="row g-4 mt-2">
+            <!-- Card 1: Monthly Calendar -->
+            <div class="col-md-3">
+                <div class="card metric-card border-0 shadow-sm text-center p-4 bg-white h-100">
+                    <div class="fs-2 mb-2">🗓️</div>
+                    <h5 class="fw-bold text-dark">Monthly Calendar</h5>
+                    <p class="text-muted small">Filter calendar months to trace paid or missed Sundays.</p>
+                    <a href="{{ url_for('member_calendar') }}" class="btn btn-outline-primary btn-sm w-100 mt-auto fw-semibold">Open Tracker</a>
+                </div>
+            </div>
+            
+            <!-- Card 2: FIXED Savings Analytics Button Link -->
+            <div class="col-md-3">
+                <div class="card metric-card border-0 shadow-sm text-center p-4 bg-white h-100">
+                    <div class="fs-2 mb-2">📈</div>
+                    <h5 class="fw-bold text-dark">Savings Analytics</h5>
+                    <p class="text-muted small">View your interactive line graphs and growth milestones.</p>
+                    <a href="{{ url_for('member_savings_trend') }}" class="btn btn-outline-primary btn-sm w-100 mt-auto fw-semibold">View Trend Chart</a>
+                </div>
+            </div>
+
+            <!-- Card 3: Contribution History -->
+            <div class="col-md-3">
+                <div class="card metric-card border-0 shadow-sm text-center p-4 bg-white h-100">
+                    <div class="fs-2 mb-2">📊</div>
+                    <h5 class="fw-bold text-dark">Contribution History</h5>
+                    <p class="text-muted small">Open complete tabular spreadsheets log files sheets.</p>
+                    <a href="{{ url_for('view_full_history') }}" class="btn btn-outline-primary btn-sm w-100 mt-auto fw-semibold">Open Ledger</a>
+                </div>
+            </div>
+
+            <!-- Card 4: Security Settings -->
+            <div class="col-md-3">
+                <div class="card metric-card border-0 shadow-sm text-center p-4 bg-white h-100">
+                    <div class="fs-2 mb-2">🔐</div>
+                    <h5 class="fw-bold text-dark">Security Settings</h5>
+                    <p class="text-muted small">Manage SHA-256 password rotation fields configurations.</p>
+                    <a href="{{ url_for('change_password') }}" class="btn btn-outline-primary btn-sm w-100 mt-auto fw-semibold">Modify Security</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+        // Global variables tracking state metrics configuration fields values
+        let privacyMaskActive = false;
 
-        <!-- JAVASCRIPT FOR PRIVACY TOGGLE FUNCTIONALITY -->
-        <!-- 🛡️ CLIENT SIDE SHOULDER-SURFING PRIVACY PROTECTION SCRIPT BLOCK -->
-    <script>
-        function toggleBalancePrivacy() {
-            const displayEl = document.getElementById('maskedBalanceDisplay');
-            const toggleBtn = document.getElementById('balanceToggleBtn');
-            const trueVal = displayEl.getAttribute('data-true-value');
+        // PASTE THIS NEW FUNCTION RIGHT HERE TO OVERWRITE YOUR OLD ON_CLICK FUNCTION
+        function togglePrivacyShield() {
+            const displayNode = document.getElementById('displayBalanceTokens');
+            const iconNode = document.getElementById('toggleIconSlot');
+            const rawValue = document.getElementById('rawSavingsValueText').value;
             
-            if (displayEl.innerText === '••••••••••') {
-                displayEl.innerText = trueVal;
-                toggleBtn.innerText = '🙈 Hide Balance';
-                toggleBtn.classList.replace('btn-light', 'btn-outline-light');
+            if (!privacyMaskActive) {
+                // 1. Hide the real balance figures behind tracking mask characters
+                displayNode.innerText = '••••••••••';
+                // 2. Switch to the masked state icon layout shape
+                iconNode.innerText = '🙈'; 
+                privacyMaskActive = true;
             } else {
-                displayEl.innerText = '••••••••••';
-                toggleBtn.innerText = '👁️ Show Balance';
-                toggleBtn.classList.replace('btn-outline-light', 'btn-light');
+                // 1. Restore the authentic currency balance text numbers
+                displayNode.innerText = rawValue;
+                // 2. Switch back to the open eye view icon shape
+                iconNode.innerText = '👁️'; 
+                privacyMaskActive = false;
             }
         }
+
+        // Keep your existing document event listener structure below it intact...
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- ================================================================= -->
+    <!-- RESTORED COMPLAINT SUBMISSION MODAL DIALOG INTERFACE BLOCK        -->
+    <!-- ================================================================= -->
+    <div class="modal fade" id="submitComplaintModal" tabindex="-1" aria-labelledby="complaintModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white py-3">
+                    <h5 class="modal-title fw-bold" id="complaintModalLabel">📩 Submit Official Help Ticket / Grievance</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/member/submit-complaint" method="POST" class="needs-validation" novalidate>
+                    <div class="modal-body p-4">
+                        
+                        <!-- Topic Selector Field Dropdown Box -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label small fw-bold text-secondary">Grievance Nature / Subject Topic</label>
+                            <select class="form-select" id="title" name="title" required>
+                                <option value="" selected disabled>Select subject category...</option>
+                                <option value="Missing Sunday Record">Missing Sunday Record Adjustment</option>
+                                <option value="Wrong Balance Display">Wrong Balance Display Figure</option>
+                                <option value="Account Settings Issue">Account Access/Security Difficulty</option>
+                                <option value="Other Savings Issue">Other Group Contribution Matters</option>
+                            </select>
+                            <div class="invalid-feedback">Please choose a relevant subject category option.</div>
+                        </div>
+
+                        <!-- Core Explanatory Narrative Body Box Area -->
+                        <div class="mb-2">
+                            <label for="description" class="form-label small fw-bold text-secondary">Detailed Explanatory Message Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="4" placeholder="Explain your issue clearly here (e.g., 'I deposited UGX 10,000 on 4th October via cash but it is not shown...')" required></textarea>
+                            <div class="invalid-feedback">Please provide a descriptive narrative overview of the issue.</div>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer bg-light p-3 border-top">
+                        <button type="button" class="btn btn-secondary px-3 btn-sm" data-bs-dismiss="modal">Discard</button>
+                        <button type="submit" class="btn btn-danger px-4 btn-sm fw-bold">Dispatch Complaint Ticket</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- ================================================================= -->
 </body>
 </html>

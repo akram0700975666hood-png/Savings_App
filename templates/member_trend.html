@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savings Analytics Trend Graph</title>
+    <!-- Standard Bootstrap CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Personal Navbar Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">📈 Savings Analytics Board</a>
+            <div class="d-flex">
+                <a href="/member/dashboard" class="btn btn-outline-light btn-sm px-3">← Back to Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        
+        <!-- Graph Presenter Card Wrapper -->
+        <div class="card shadow-sm border-0 bg-white mb-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <h5 class="card-title text-dark fw-bold mb-0">Personal Savings Growth Trend Line</h5>
+                <small class="text-muted">Visual chart plotting your total accumulated group assets month-over-month.</small>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <!-- Responsive HTML5 Canvas Component -->
+                <div style="position: relative; height: 400px; width: 100%;">
+                    <canvas id="savingsTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Core Chart.js Library Link Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Safe injection parsing arrays passed via Jinja variables backends parameters cleanly
+            const labelsData = {{ chart_labels | tojson if chart_labels else [] }};
+            const pointsData = {{ chart_data | tojson if chart_data else [] }};
+            
+            const ctx = document.getElementById('savingsTrendChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelsData,
+                    datasets: [{
+                        label: 'Cumulative Total Savings (UGX)',
+                        data: pointsData,
+                        borderColor: '#0d6efd', /* Bootstrap primary blue */
+                        backgroundColor: 'rgba(13, 110, 253, 0.06)',
+                        borderWidth: 3,
+                        tension: 0.2, /* Smooth curvy styling arcs layout */
+                        pointBackgroundColor: '#0d6efd',
+                        pointRadius: 5,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'UGX ' + value.toLocaleString(); /* Add UGX formatting string suffix */
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

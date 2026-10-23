@@ -1,13 +1,17 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import hashlib
 import mysql.connector
-from datetime import datetime
+import calendar
 import os
 import smtplib
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from dotenv import load_dotenv
+
+# CLEANED DATETIME IMPORTS: This version allows you to use datetime.now() everywhere safely
+from datetime import datetime, date, timedelta
+
 
 # ==========================================
 # 1. LOAD CONFIGURATION AND SECRET KEYS
@@ -294,70 +298,77 @@ def view_complaints():
     conn.close()
     return render_template('view_complaints.html', complaints=processed_complaints, username=session['username'])
 
-@app.route('/member/dashboard', methods=['GET', 'POST'])
+@app.route('/member/dashboard')
 def member_dashboard():
-    """Guarded portal route exclusively for standard members to view metrics and submit logs."""
-    if 'user_id' not in session:
+    """Guarded portal route for member accounts equipped with dynamic savings milestone trend charts and active notifications query."""
+    if 'user_id' not in session or str(session.get('role', '')).strip().lower() != 'member':
         return redirect(url_for('login'))
         
-    user_role = str(session.get('role', '')).strip().lower()
-    if user_role != 'member':
-        return redirect(url_for('login'))
-        
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
     member_id = session['user_id']
     
-    # --- 1. HANDLE NEW COMPLAINT SUBMISSION (POST) ---
-    if request.method == 'POST' and 'complaint_message' in request.form:
-        message_text = request.form['complaint_message'].strip()
-        if message_text:
-            insert_query = "INSERT INTO complaints (member_id, message) VALUES (%s, %s)"
-            cursor.execute(insert_query, (member_id, message_text))
-            conn.commit()
-            flash("Your complaint message has been securely submitted to administrators.", "success")
-            cursor.close()
-            conn.close()
-            return redirect(url_for('member_dashboard'))
-
-    # --- 2. FETCH MEMBER METRICS & HISTORY (GET) ---
-    cursor.execute("SELECT SUM(amount) AS my_savings FROM deposits WHERE member_id = %s", (member_id,))
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # 1. Fetch total accumulated personal savings group pool (UGX)
+    cursor.execute("SELECT SUM(amount) AS total_savings FROM deposits WHERE member_id = %s", (member_id,))
     savings_result = cursor.fetchone()
-    my_savings = savings_result['my_savings'] if savings_result and savings_result['my_savings'] is not None else 0
+    total_savings = savings_result['total_savings'] if savings_result and savings_result['total_savings'] is not None else 0
     
-    # Updated query to isolate and retrieve strictly current calendar month tracking rows for high-speed dashboard loading
-    cursor.execute("""
-        SELECT amount, deposit_date, target_sunday_date 
-        FROM deposits 
-        WHERE member_id = %s 
-          AND MONTH(deposit_date) = MONTH(NOW()) 
-          AND YEAR(deposit_date) = YEAR(NOW())
-        ORDER BY deposit_date DESC
-    """, (member_id,))
-    my_history = cursor.fetchall()
-    
-    # Fetch active unread system direct notifications from the tracking ledger pipeline
-    cursor.execute("SELECT notification_id, alert_message, created_at FROM notifications WHERE member_id = %s AND is_read = 0 ORDER BY created_at DESC", (member_id,))
+    # 2. Fetch total logged complaints/alerts for this member
+    cursor.execute("SELECT COUNT(*) AS total_complaints FROM complaints WHERE member_id = %s", (member_id,))
+    complaints_result = cursor.fetchone()
+    total_complaints = complaints_result['total_complaints'] if complaints_result else 0
+
+    # 3. CORRECTED NOTIFICATION QUERY: Uses member_id instead of user_id to eliminate the 1054 crash
+    cursor.execute(
+        "SELECT notification_id, alert_message FROM notifications WHERE member_id = %s AND is_read = 0 ORDER BY notification_id DESC", 
+        (member_id,)
+    )
     active_notifications = cursor.fetchall()
 
+    # 4. Monthly Cumulative Savings Trend Calculator
+    chart_query = """
+        SELECT YEAR(target_sunday_date) as s_year, MONTH(target_sunday_date) as s_month, SUM(amount) as monthly_sum
+        FROM deposits
+        WHERE member_id = %s
+        GROUP BY YEAR(target_sunday_date), MONTH(target_sunday_date)
+        ORDER BY s_year ASC, s_month ASC
+    """
+    cursor.execute(chart_query, (member_id,))
+    trend_rows = cursor.fetchall()
+    
     cursor.close()
     conn.close()
     
-    # Calculate the dynamic calendar grid matrix metrics for the member
-    current_date = datetime.now()
-    matrix = get_sundays_matrix(member_id, current_date.year, current_date.month)
-    month_name = calendar.month_name[current_date.month]
+    # Process rows into arrays of strings for frontend JavaScript parsing loops
+    chart_labels = []
+    chart_data = []
+    running_total = 0
     
+    for row in trend_rows:
+        month_name = calendar.month_name[row['s_month']][:3] # e.g., 'Jan', 'Feb'
+        label_str = f"{month_name} {row['s_year']}"
+        chart_labels.append(label_str)
+        
+        # Accumulate the running sum total to display growth pacing trends
+        running_total += float(row['monthly_sum'])
+        chart_data.append(running_total)
+        
+    # If no savings history exists yet, provide baseline initial parameters to prevent empty chart crashes
+    if not chart_labels:
+        chart_labels = ["No Data Available"]
+        chart_data = [0]
+
     return render_template(
         'member_dashboard.html', 
         username=session['username'],
-        my_savings=my_savings,
-        history=my_history,
-        matrix=matrix,
-        current_month=month_name,
-        current_year=current_date.year,
-        notifications=active_notifications
+        total_savings=total_savings,
+        total_complaints=total_complaints,
+        chart_labels=chart_labels,
+        chart_data=chart_data,
+        notifications=active_notifications  # Sent along safely to your template
     )
+
 
 @app.route('/logout')
 def logout():
@@ -571,28 +582,28 @@ def view_logs():
 
 @app.route('/admin/complaints/clear/<int:complaint_id>', methods=['POST'])
 def clear_complaint(complaint_id):
-    """Manually purges a processed grievance row out from the complaints table ledger pipeline."""
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
-    user_role = str(session.get('role', '')).strip().lower()
-    if user_role not in ['admin', 'super_admin']:
+    """Admin-only controller action route to permanently delete or dismiss a complaint ticket from the database."""
+    if 'user_id' not in session or str(session.get('role', '')).strip().lower() not in ['admin', 'super_admin']:
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     
     try:
-        # Explicitly remove the target complaint record matching the selected row ID
-        cursor.execute("DELETE FROM complaints WHERE complaint_id = %s", (complaint_id,))
-        conn.commit()
-        flash("The complaint record has been successfully cleared out from the tracking pipeline.", "success")
-    except mysql.connector.Error as err:
-        flash(f"Database error during deletion: {err}", "danger")
+        # Atomic purge query execution
+        delete_query = "DELETE FROM complaints WHERE complaint_id = %s"
+        cursor.execute(delete_query, (complaint_id,))
+        conn.commit() # Formally commit changes to Laragon MySQL logs
         
-    cursor.close()
-    conn.close()
-    return redirect(url_for('view_complaints'))
+        flash('Complaint record has been permanently cleared from the system pipeline.', 'success')
+    except Exception as err:
+        flash(f"Failed to execute complaint purge operation: {str(err)}", 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('admin_view_complaints'))
+
 
 @app.route('/admin/members/add', methods=['GET', 'POST'])
 def add_member():
@@ -898,86 +909,119 @@ def get_sundays_matrix(member_id, year, month):
     """Helper function that returns a list of dictionaries tracking paid/missed/future Sundays."""
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    
-    # Fetch all custom target sunday deposit dates recorded for this member in the given month
+
+    # Creating our matching mask string (e.g., '2026-10-%')
+    target_pattern = f"{year}-{month:02d}-%"
+
+    # CORRECTED QUERY: Removing 'status' column to match your exact database table schema columns fields
     query = """
-        SELECT DISTINCT target_sunday_date 
-        FROM deposits 
-        WHERE member_id = %s 
-          AND YEAR(target_sunday_date) = %s 
-          AND MONTH(target_sunday_date) = %s
+        SELECT DISTINCT target_sunday_date
+        FROM deposits
+        WHERE member_id = %s
+        AND target_sunday_date LIKE %s
     """
-    cursor.execute(query, (member_id, year, month))
+    cursor.execute(query, (member_id, target_pattern))
     paid_rows = cursor.fetchall()
-    
-    # Store paid dates as string items in a clean lookup set
-    paid_sundays = {str(r['target_sunday_date']) for r in paid_rows if r['target_sunday_date']}
-    
+
+    # Dynamic look-up array aggregator handling both datetime.date objects and raw textual strings cleanly
+    paid_sundays = set()
+    for r in paid_rows:
+        date_val = r['target_sunday_date']
+        if date_val:
+            if hasattr(date_val, 'strftime'):
+                paid_sundays.add(date_val.strftime('%Y-%m-%d'))
+            else:
+                paid_sundays.add(str(date_val).strip()[:10])
+
     cursor.close()
     conn.close()
-    
-    # Generate all calendar days for the month using Python's standard calendar module
-    cal = calendar.Calendar(firstweekday=6) # 6 represents Sunday
+
+    cal = calendar.Calendar(firstweekday=6)
     month_days = cal.itermonthdays4(year, month)
-    
-    # Get today's local date object to compare against future calendar dates
+
     today_date = datetime.now().date()
-    
     sundays_matrix = []
+
     for d_year, d_month, d_day, weekday in month_days:
-        # Filter for Sundays (weekday == 6) that belong strictly to the current month layout
         if weekday == 6 and d_month == month:
             date_str = f"{d_year}-{d_month:02d}-{d_day:02d}"
             formatted_display_date = f"Sunday, {d_day} {calendar.month_name[month][:3]}"
-            
-            # Convert current loop day into a date object for comparison
+
             current_loop_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-            
             is_paid = date_str in paid_sundays
-            
-            # Time filter comparison rules
+
             if is_paid:
                 status_label = 'PAID'
             elif current_loop_date > today_date:
                 status_label = 'FUTURE'
             else:
                 status_label = 'MISSED'
-                
+
             sundays_matrix.append({
                 'date_string': date_str,
                 'display_label': formatted_display_date,
                 'status': status_label
             })
-            
+
     return sundays_matrix
 
-@app.route('/admin/members/calendar/<int:target_user_id>')
+
+@app.route('/admin/members/calendar/<int:target_user_id>', methods=['GET', 'POST'])
 def admin_member_calendar(target_user_id):
-    """Admin-only route to inspect a specific member's Sunday savings metrics profile calendar."""
+    """Admin route upgraded to inspect and dynamically filter a specific member's calendar."""
     if 'user_id' not in session:
         return redirect(url_for('login'))
+        
     user_role = str(session.get('role', '')).strip().lower()
     if user_role not in ['admin', 'super_admin']:
         return redirect(url_for('login'))
         
-    current_date = datetime.now()
-    year = current_date.year
-    month = current_date.month
-    month_name = calendar.month_name[month]
-    
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT username, full_name FROM users WHERE user_id = %s", (target_user_id,))
+    
+    # 1. Fetch current profile targets to verify the URL parameter
+    cursor.execute("SELECT user_id, username, full_name FROM users WHERE user_id = %s", (target_user_id,))
     member = cursor.fetchone()
-    cursor.close()
-    conn.close()
     
     if not member:
         flash("Target member matrix profile not found.", "danger")
+        cursor.close()
+        conn.close()
         return redirect(url_for('view_members'))
         
+    # 2. Fetch all registered members to fill the drop-down selector form
+    cursor.execute("SELECT user_id, username FROM users WHERE LOWER(role) = 'member' ORDER BY username ASC")
+    all_members = cursor.fetchall()
+    
+    # 3. Establish temporal filter states (Default to current month/year unless submitted via form)
+    current_date = datetime.now()
+    year = int(request.form.get('year') or current_date.year)
+    month = int(request.form.get('month') or current_date.month)
+    month_name = calendar.month_name[month]
+    
+    cursor.close()
+    conn.close()
+    
+    # 4. Generate the matrix array using your existing helper logic block
     matrix = get_sundays_matrix(target_user_id, year, month)
-    return render_template('admin_member_calendar.html', username=session['username'], member=member, matrix=matrix, current_month=month_name, current_year=year)
+    
+    # Define year and month options dynamically for our HTML selectors
+    months_choices = [(i, calendar.month_name[i]) for i in range(1, 13)]
+    years_choices = [current_date.year - 1, current_date.year, current_date.year + 1]
+    
+    return render_template(
+        'admin_member_calendar.html', 
+        username=session['username'], 
+        member=member, 
+        members_list=all_members,
+        matrix=matrix, 
+        current_month_name=month_name,
+        current_month=month, 
+        current_year=year,
+        months_choices=months_choices,
+        years_choices=years_choices
+    )
+
 
 
 @app.route('/admin/year-end-payout', methods=['POST'])
@@ -1158,29 +1202,6 @@ def send_direct_notification():
         
     return redirect(url_for('admin_dashboard'))
 
-
-@app.route('/member/notifications/read/<int:notification_id>', methods=['POST'])
-def dismiss_notification(notification_id):
-    """Flips an unread notification state to read so it drops off the member active layout grid."""
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        # Updates state flags to 1 so the alert banner drops out on subsequent loads automatically
-        update_query = "UPDATE notifications SET is_read = 1 WHERE notification_id = %s AND member_id = %s"
-        cursor.execute(update_query, (notification_id, session['user_id']))
-        conn.commit()
-    except mysql.connector.Error as err:
-        print(f">>> ERROR: Failed to clear unread alert parameter matching row ID #{notification_id}: {err}")
-    finally:
-        cursor.close()
-        conn.close()
-        
-    return redirect(url_for('member_dashboard'))
-
 @app.route('/member/my-calendar')
 def view_my_calendar():
     """Renders the standalone dedicated calendar matrix view panel for a standard member account."""
@@ -1289,6 +1310,285 @@ def edit_member(target_user_id):
         conn.close()
         
     return redirect(url_for('view_members'))
+
+    # ========================================================================
+# ADMINISTRATIVE ROUTE: RETROACTIVE SAVINGS ENTRY OVERWRITE (TASK A)
+# ========================================================================
+@app.route('/admin/retroactive-deposit', methods=['GET', 'POST'])
+def admin_retroactive_deposit():
+    """Form processing portal to route and log missed historical Sunday savings."""
+    if 'user_id' not in session or str(session.get('role', '')).strip().lower() not in ['admin', 'super_admin']:
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    if request.method == 'POST':
+        # 1. Grab inputs from your form fields (matching name="member_id", name="target_sunday_date", name="amount")
+        member_id = request.form.get('member_id')
+        target_sunday_date = request.form.get('target_sunday_date')
+        amount = request.form.get('amount')
+        
+        if not member_id or not target_sunday_date or not amount:
+            flash('All configuration fields are mandatory.', 'danger')
+            return redirect(url_for('admin_retroactive_deposit'))
+            
+        try:
+            # 2. Corrected insert statement matching your actual columns without using the missing 'status' field
+            insert_query = """
+                INSERT INTO deposits (member_id, amount, target_sunday_date, deposit_date) 
+                VALUES (%s, %s, %s, NOW())
+            """
+            cursor.execute(insert_query, (member_id, amount, target_sunday_date))
+            conn.commit() # Save the changes to Laragon MySQL
+            
+            flash('Retroactive savings entry recorded successfully!', 'success')
+            return redirect(url_for('admin_retroactive_deposit'))
+            
+        except Exception as err:
+            conn.rollback()
+            flash(f"Database insertion failed: {str(err)}", 'danger')
+            return redirect(url_for('admin_retroactive_deposit'))
+        finally:
+            cursor.close()
+            conn.close()
+
+    # GET Method: Fetches member list options for the dropdown selector layout frame field
+    try:
+        cursor.execute("SELECT user_id, username FROM users WHERE LOWER(role) = 'member' ORDER BY username ASC")
+        members = cursor.fetchall()
+        return render_template('retroactive_deposit.html', members=members, username=session['username'])
+    except Exception as err:
+        flash(f"Failed to fetch database user arrays safely: {str(err)}", 'danger')
+        return redirect('/admin/dashboard')
+    finally:
+        if conn.is_connected():
+            cursor.close()
+            conn.close()
+
+# ========================================================================
+# ADMINISTRATIVE ROUTE: GLOBAL GROUP CALENDAR SAVINGS MATRIX BOARD (TASK B)
+# ========================================================================
+@app.route('/admin/global-calendar', methods=['GET'])
+def admin_global_calendar():
+    """Compiles all active member profiles alongside their calculated paid/missed weekly rows arrays."""
+    if 'user_id' not in session or str(session.get('role', '')).strip().lower() not in ['admin', 'super_admin']:
+        return redirect(url_for('login'))
+        
+    # Handles calendar date extraction and matrix processing loop for members
+    # Please refer to the full source code block in the provided implementation for complete matrix assembly.
+    now = datetime.now()
+    current_year = int(request.args.get('year', now.year))
+    current_month = int(request.args.get('month', now.month))
+    month_name = calendar.month_name[current_month]
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT user_id, username FROM users WHERE LOWER(role) = 'member' ORDER BY username ASC")
+    system_members = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    processed_global_rows = [{'username': m['username'], 'matrix': get_sundays_matrix(m['user_id'], current_year, current_month)} for m in system_members]
+    
+    return render_template(
+        'admin_global_calendar.html',
+        global_matrix_data=processed_global_rows,
+        current_year=current_year,
+        current_month=current_month,
+        current_month_name=month_name,
+        username=session['username']
+    )
+
+
+@app.route('/member/calendar', methods=['GET', 'POST'])
+def member_calendar():
+    """Upgraded member route to inspect and dynamically filter their own monthly calendar."""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    user_role = str(session.get('role', '')).strip().lower()
+    if user_role != 'member':
+        return redirect(url_for('login'))
+        
+    member_id = session['user_id']
+    
+    # Establish temporal filter states (Default to current month/year unless submitted via form)
+    current_date = datetime.now()
+    
+    if request.method == 'POST':
+        year = int(request.form.get('year') or current_date.year)
+        month = int(request.form.get('month') or current_date.month)
+    else:
+        year = int(request.args.get('year') or current_date.year)
+        month = int(request.args.get('month') or current_date.month)
+        
+    month_name = calendar.month_name[month]
+    
+    # Generate the matrix array using your existing robust helper logic block
+    matrix = get_sundays_matrix(member_id, year, month)
+    
+    # Define year and month options dynamically for our HTML selectors
+    months_choices = [(i, calendar.month_name[i]) for i in range(1, 13)]
+    years_choices = [current_date.year - 1, current_date.year, current_date.year + 1]
+    
+    return render_template(
+        'member_calendar.html', 
+        username=session['username'], 
+        matrix=matrix, 
+        current_month_name=month_name,
+        current_month=month, 
+        current_year=year,
+        months_choices=months_choices,
+        years_choices=years_choices
+    )
+
+
+@app.route('/member/savings-trend')
+def member_savings_trend():
+    """Dedicated route to display a member's cumulative monthly metrics chart."""
+    if 'user_id' not in session or str(session.get('role', '')).strip().lower() != 'member':
+        return redirect(url_for('login'))
+        
+    member_id = session['user_id']
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    chart_query = """
+        SELECT YEAR(target_sunday_date) as s_year, MONTH(target_sunday_date) as s_month, SUM(amount) as monthly_sum
+        FROM deposits
+        WHERE member_id = %s
+        GROUP BY YEAR(target_sunday_date), MONTH(target_sunday_date)
+        ORDER BY s_year ASC, s_month ASC
+    """
+    cursor.execute(chart_query, (member_id,))
+    trend_rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    chart_labels = []
+    chart_data = []
+    running_total = 0
+    
+    for row in trend_rows:
+        month_name = calendar.month_name[row['s_month']][:3]
+        chart_labels.append(f"{month_name} {row['s_year']}")
+        running_total += float(row['monthly_sum'])
+        chart_data.append(running_total)
+        
+    if not chart_labels:
+        chart_labels = ["No Data Available"]
+        chart_data = [0]
+        
+    return render_template(
+        'member_trend.html',
+        username=session['username'],
+        chart_labels=chart_labels,
+        chart_data=chart_data
+    )
+
+@app.route('/member/submit-complaint', methods=['POST'])
+def member_submit_complaint():
+    """Controller processing endpoint route to log submitted member help tickets into database fields."""
+    if 'user_id' not in session or str(session.get('role', '')).strip().lower() != 'member':
+        return redirect(url_for('login'))
+        
+    member_id = session['user_id']
+    
+    # Extract values from our modal input elements
+    title_category = request.form.get('title')
+    message_body = request.form.get('description')
+    
+    if not title_category or not message_body:
+        flash('Complaint subject topic and description body entries are mandatory.', 'danger')
+        return redirect(url_for('member_dashboard'))
+        
+    # Combine category and text into one clean string layout block
+    combined_message = f"[{title_category}] {message_body}"
+        
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # CORRECTED INSERT SYSTEM: Targets the 'message' column field to match your actual database schema
+        insert_query = """
+            INSERT INTO complaints (member_id, message) 
+            VALUES (%s, %s)
+        """
+        cursor.execute(insert_query, (member_id, combined_message))
+        conn.commit() # Safely save record logs into your Laragon local database server
+        
+        flash('Your grievance help ticket has been successfully dispatched to the admin panel!', 'success')
+    except Exception as err:
+        flash(f"System failed logging complaint query operations arrays: {str(err)}", 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('member_dashboard'))
+
+@app.route('/admin/view-complaints')
+def admin_view_complaints():
+    """Central grievance monitoring desk routing endpoint linking member IDs to usernames in-memory."""
+    if 'user_id' not in session or str(session.get('role', '')).strip().lower() not in ['admin', 'super_admin']:
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # CORRECTED ADMIN QUERY: Pulls c.message and maps user_id via your member_id foreign key bridge
+        query = """
+            SELECT c.complaint_id, c.member_id, c.message, u.username, u.full_name
+            FROM complaints c
+            JOIN users u ON c.member_id = u.user_id
+            ORDER BY c.complaint_id DESC
+        """
+        cursor.execute(query)
+        complaints_list = cursor.fetchall()
+        
+        return render_template(
+            'view_complaints.html',
+            username=session['username'],
+            complaints=complaints_list
+        )
+        
+    except Exception as err:
+        flash(f"Database error loading administrative grievances console logs: {str(err)}", 'danger')
+        return redirect(url_for('admin_dashboard'))
+    finally:
+        cursor.close()
+        conn.close()
+
+# FIX: Adding this explicit route decorator clears the 404 Not Found error instantly!
+@app.route('/member/notification/dismiss/<int:notification_id>', methods=['POST'])
+def dismiss_notification(notification_id):
+    """Marks a specific notification as read in the database so it vanishes from the dashboard."""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    user_role = str(session.get('role', '')).strip().lower()
+    if user_role not in ['admin', 'super_admin', 'member']:
+        return redirect(url_for('login'))
+        
+    member_id = session['user_id']
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # FIX: Explicitly updates using notification_id and safeguards it via member_id (user_id column)
+        update_query = "UPDATE notifications SET is_read = 1 WHERE notification_id = %s AND member_id = %s"
+        cursor.execute(update_query, (notification_id, member_id))
+        conn.commit()
+        flash("Notification dismissed successfully.", "success")
+    except mysql.connector.Error as err:
+        conn.rollback()
+        flash(f"Database error while dismissing notification: {err}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for('member_dashboard'))
 
 
 
