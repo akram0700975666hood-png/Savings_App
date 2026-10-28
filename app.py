@@ -74,7 +74,7 @@ def home():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Handles visual authentication and branches users by role."""
+    """Handles visual authentication and branches users by role and policy completion state."""
     if request.method == 'POST':
         username = request.form['username'].strip()
         password = request.form['password'].strip()
@@ -120,6 +120,9 @@ def login():
             if clean_role in ['admin', 'super_admin']:
                 return redirect(url_for('admin_dashboard'))
             else:
+                # Intercept standard member to check if they have accepted the terms yet
+                if not user.get('terms_accepted'):
+                    return redirect(url_for('member_sign_policy'))
                 return redirect(url_for('member_dashboard'))
         else:
             flash("Invalid username or password credentials.", "danger")
@@ -253,13 +256,14 @@ def view_members():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Query details out from the users database infrastructure including contact_info and next_of_kin_info
-    cursor.execute("SELECT user_id, username, contact_info, next_of_kin_info, role, account_status, is_online FROM users")
+    # FIX: Explicitly pulled the terms_accepted database field column into the cursor selection query array
+    cursor.execute("SELECT user_id, username, contact_info, next_of_kin_info, role, account_status, is_online, terms_accepted FROM users")
     all_members = cursor.fetchall()
     
     cursor.close()
     conn.close()
     return render_template('view_members.html', members=all_members, username=session['username'])
+
 
 @app.route('/admin/complaints')
 def view_complaints():
@@ -308,6 +312,14 @@ def member_dashboard():
     
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
+    
+    # SECURITY POLICY GATE ENFORCEMENT: Verify that they did not bypass by typing the URL directly
+    cursor.execute("SELECT terms_accepted FROM users WHERE user_id = %s", (member_id,))
+    status_check = cursor.fetchone()
+    if status_check and not status_check['terms_accepted']:
+        cursor.close()
+        conn.close()
+        return redirect(url_for('member_sign_policy'))
     
     # 1. Fetch total accumulated personal savings group pool (UGX)
     cursor.execute("SELECT SUM(amount) AS total_savings FROM deposits WHERE member_id = %s", (member_id,))
@@ -545,6 +557,12 @@ def archive_rollover():
             
         # 3. Clear out active contributions ledger row records so the new year starts at zero
         cursor.execute("DELETE FROM deposits")
+
+        # ========================================================================
+        # RESTORED ATOMIC AUTO-INCREMENT RESET COMMANDS (FROM PROJECT 2)
+        # ========================================================================
+        cursor.execute("ALTER TABLE deposits AUTO_INCREMENT = 1")
+        
         
         # Commit all table alterations safely together as an atomic unit
         conn.commit()
@@ -1062,6 +1080,8 @@ def year_end_payout():
         # ========================================================
         if skip_email_param:
             cursor.execute("DELETE FROM deposits")
+            # Reset increment counter targets to keep sequence numbers orderly
+            cursor.execute("ALTER TABLE deposits AUTO_INCREMENT = 1")
             conn.commit()
             
             # Clear any old warning list from session memory so the banner disappears
@@ -1316,7 +1336,7 @@ def edit_member(target_user_id):
 # ========================================================================
 @app.route('/admin/retroactive-deposit', methods=['GET', 'POST'])
 def admin_retroactive_deposit():
-    """Form processing portal to route and log missed historical Sunday savings."""
+    """Form processing portal to route, log, or overwrite missed historical Sunday savings balances."""
     if 'user_id' not in session or str(session.get('role', '')).strip().lower() not in ['admin', 'super_admin']:
         return redirect(url_for('login'))
         
@@ -1324,34 +1344,50 @@ def admin_retroactive_deposit():
     cursor = conn.cursor(dictionary=True)
     
     if request.method == 'POST':
-        # 1. Grab inputs from your form fields (matching name="member_id", name="target_sunday_date", name="amount")
         member_id = request.form.get('member_id')
         target_sunday_date = request.form.get('target_sunday_date')
         amount = request.form.get('amount')
         
         if not member_id or not target_sunday_date or not amount:
-            flash('All configuration fields are mandatory.', 'danger')
+            flash('All configuration adjustment parameters are strictly mandatory.', 'danger')
             return redirect(url_for('admin_retroactive_deposit'))
             
         try:
-            # 2. Corrected insert statement matching your actual columns without using the missing 'status' field
-            insert_query = """
+            # FIX: Implemented ON DUPLICATE KEY UPDATE to overwrite the amount instead of summing items up
+            upsert_query = """
                 INSERT INTO deposits (member_id, amount, target_sunday_date, deposit_date) 
                 VALUES (%s, %s, %s, NOW())
+                ON DUPLICATE KEY UPDATE 
+                    amount = VALUES(amount),
+                    deposit_date = NOW();
             """
-            cursor.execute(insert_query, (member_id, amount, target_sunday_date))
-            conn.commit() # Save the changes to Laragon MySQL
+            cursor.execute(upsert_query, (member_id, amount, target_sunday_date))
+            conn.commit() # Formally commit changes to Laragon MySQL logs
             
-            flash('Retroactive savings entry recorded successfully!', 'success')
+            flash('Retroactive savings override record updated and synchronized successfully!', 'success')
             return redirect(url_for('admin_retroactive_deposit'))
             
         except Exception as err:
             conn.rollback()
-            flash(f"Database insertion failed: {str(err)}", 'danger')
+            flash(f"Database modification sequence failed: {str(err)}", 'danger')
             return redirect(url_for('admin_retroactive_deposit'))
         finally:
             cursor.close()
             conn.close()
+
+    # GET Method: Fetches member list options for the dropdown selector layout frame field
+    try:
+        cursor.execute("SELECT user_id, username FROM users WHERE LOWER(role) = 'member' ORDER BY username ASC")
+        members = cursor.fetchall()
+        return render_template('retroactive_deposit.html', members=members, username=session['username'])
+    except Exception as err:
+        flash(f"Failed to fetch database user arrays safely: {str(err)}", 'danger')
+        return redirect('/admin/dashboard')
+    finally:
+        if conn.is_connected():
+            cursor.close()
+            conn.close()
+
 
     # GET Method: Fetches member list options for the dropdown selector layout frame field
     try:
@@ -1589,6 +1625,80 @@ def dismiss_notification(notification_id):
         conn.close()
         
     return redirect(url_for('member_dashboard'))
+
+@app.route('/member/sign-policy', methods=['GET', 'POST'])
+def member_sign_policy():
+    """Forces first-time logging members to explicitly review and accept strict group terms."""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    member_id = session['user_id']
+    
+    if request.method == 'POST':
+        rule_no_loans = request.form.get('rule_no_loans')
+        rule_december_only = request.form.get('rule_december_only')
+        
+        if not rule_no_loans or not rule_december_only:
+            flash("You must read and check both validation boxes to accept the project terms and proceed.", "danger")
+            return redirect(url_for('member_sign_policy'))
+            
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        try:
+            update_query = "UPDATE users SET terms_accepted = TRUE, agreed_at = %s WHERE user_id = %s"
+            cursor.execute(update_query, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), member_id))
+            conn.commit()
+            
+            flash("Thank you! You have successfully signed the Sunday Savings Project Agreement policy document.", "success")
+            return redirect(url_for('member_dashboard'))
+        except mysql.connector.Error as err:
+            conn.rollback()
+            flash(f"System failed saving your policy signature record: {err}", "danger")
+            return redirect(url_for('member_sign_policy'))
+        finally:
+            cursor.close()
+            conn.close()
+            
+    return render_template('sign_policy.html', username=session['username'])
+
+@app.route('/admin/members/view-policy/<int:target_user_id>')
+def admin_view_policy(target_user_id):
+    """Fetches and displays an individual member's policy signature tracking sheet for printing or audit disputes."""
+    if 'user_id' not in session or str(session.get('role', '')).strip().lower() not in ['admin', 'super_admin']:
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # 1. Fetch target member details using the user_id URL parameter mapping
+    cursor.execute("SELECT user_id, username, full_name, contact_info, terms_accepted, agreed_at FROM users WHERE user_id = %s", (target_user_id,))
+    member = cursor.fetchone()
+    
+    if not member:
+        cursor.close()
+        conn.close()
+        flash("Target profile record was not found inside active database logs.", "danger")
+        return redirect(url_for('view_members'))
+        
+    # ========================================================================
+    # RESTORED SELECTION PIPELINE: AUTOMATICALLY FETCH ALL REGISTERED ADMINS
+    # ========================================================================
+    cursor.execute("SELECT full_name FROM users WHERE LOWER(role) IN ('admin', 'super_admin') ORDER BY full_name ASC")
+    admins_list = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
+    # Passes both the member record and your full admin rows context array into your html layout file cleanly
+    return render_template(
+        'print_policy_receipt.html', 
+        member=member, 
+        admins=admins_list, 
+        generation_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    )
+
+
 
 
 

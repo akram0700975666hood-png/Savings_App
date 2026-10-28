@@ -3,61 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sunday Savings System - Login</title>
-    <!-- Importing Bootstrap layout styles directly via secure CDN link -->
-    <link href="https://jsdelivr.net" rel="stylesheet">
+    <title>Sunday Savings - Login</title>
+    <!-- Bootstrap 5 CSS CDN link -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Ambient dark background with warm, soft glowing accents */
+        body {
+            background: radial-gradient(circle at 10% 20%, rgba(90, 40, 10, 0.4) 0%, rgba(20, 20, 25, 1) 90%),
+                        radial-gradient(circle at 90% 80%, rgba(130, 70, 15, 0.25) 0%, rgba(15, 15, 20, 1) 80%);
+            background-color: #121214;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism card container styling layout */
+        .glass-login-card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px) saturate(120%);
+            -webkit-backdrop-filter: blur(16px) saturate(120%);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6),
+                        inset 0 1px 2px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Ambient branding element sun icon wrapper glowing effect */
+        .brand-glow-icon {
+            font-size: 3rem;
+            line-height: 1;
+            display: inline-block;
+            filter: drop-shadow(0 0 12px rgba(255, 165, 0, 0.6));
+            animation: softPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes softPulse {
+            0%, 100% { filter: drop-shadow(0 0 12px rgba(255, 165, 0, 0.5)); }
+            50% { filter: drop-shadow(0 0 20px rgba(255, 140, 0, 0.8)); }
+        }
+
+        /* Form text tracking headings custom layouts */
+        .login-title {
+            color: #ffffff;
+            font-size: 1.75rem;
+            letter-spacing: 0.5px;
+        }
+        .login-subtitle {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+        }
+
+        /* Clean translucent input field containers components overrides */
+        .form-label-custom {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .form-control-glass {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 12px !important;
+            color: #ffffff !important;
+            padding: 0.75rem 1rem !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+        .form-control-glass:focus {
+            background: rgba(255, 255, 255, 0.08) !important;
+            border-color: rgba(255, 165, 0, 0.5) !important;
+            box-shadow: 0 0 0 4px rgba(255, 165, 0, 0.15) !important;
+            outline: none !important;
+        }
+        .form-control-glass::placeholder {
+            color: rgba(255, 255, 255, 0.25) !important;
+        }
+
+        /* Vibrant solid primary sign-in action button controls mapping style */
+        .btn-signin-custom {
+            background: linear-gradient(135deg, #ff9f1c 0%, #ff8c00 100%);
+            border: none;
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 0.85rem 1rem;
+            box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3),
+                        inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+        .btn-signin-custom:hover {
+            background: linear-gradient(135deg, #ffa82e 0%, #xfa000 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(255, 140, 0, 0.45);
+        }
+        .btn-signin-custom:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 8px rgba(255, 140, 0, 0.3);
+        }
+    </style>
 </head>
-<body class="bg-light d-flex align-items-center justify-content-center vh-100">
+<body>
 
-    <div class="container" style="max-width: 450px;">
-        <!-- Visual Card Wrapper -->
-        <div class="card shadow border-0 rounded-3">
-            <div class="card-body p-5 text-center">
-                
-                <!-- System Visual Header -->
-                <div class="mb-4">
-                    <h2 class="fw-bold text-success m-0">☀️ SUNDAY SAVINGS</h2>
-                    <small class="text-muted text-uppercase tracking-wider">Tracking System Portal</small>
-                </div>
-
-                <!-- Live Dynamic Warning Notifications Block -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }} alert-dismissible fade show p-2 small mb-3" role="alert">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-
-                <!-- Main Login Web Form Submit Gateway -->
-                <form action="/login" method="POST">
-                    
-                    <!-- Username Input Box Group -->
-                    <div class="form-floating mb-3 text-start">
-                        <input type="text" class="form-control" id="usernameInput" name="username" placeholder="Username" required>
-                        <label for="usernameInput">Enter Username</label>
-                    </div>
-
-                    <!-- Secure Password Input Box Group -->
-                    <div class="form-floating mb-4 text-start">
-                        <input type="password" class="form-control" id="passwordInput" name="password" placeholder="Password" required>
-                        <label for="passwordInput">Enter Password</label>
-                    </div>
-
-                    <!-- Secure Submission Authentication Trigger Button -->
-                    <button type="submit" class="btn btn-success w-100 py-3 fw-bold rounded-3 shadow-sm">
-                        Secure Secure Sign In
-                    </button>
-                    
-                </form>
-
-            </div>
+    <div class="glass-login-card text-center">
+        
+        <div class="mb-2">
+            <span class="brand-glow-icon">☀️</span>
         </div>
+        <h2 class="login-title fw-black text-uppercase mb-1">Sunday Savings</h2>
+        <p class="login-subtitle text-uppercase tracking-wider mb-4">Tracking System Portal</p>
+
+        <!-- Flash Alert Message Display Pipe Container -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show small py-2 px-3 mb-3 border-0 rounded-3 text-start" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close small p-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Secure Form Validation Infrastructure Pipeline Box -->
+        <form action="{{ url_for('login') }}" method="POST" class="text-start">
+            <div class="mb-3">
+                <label for="username" class="form-label form-label-custom">Username</label>
+                <input type="text" id="username" name="username" class="form-control form-control-glass" placeholder="Enter your username" autocomplete="username" required>
+            </div>
+            
+            <div class="mb-4">
+                <label for="password" class="form-label form-label-custom">Password</label>
+                <input type="password" id="password" name="password" class="form-control form-control-glass" placeholder="Enter your password" autocomplete="current-password" required>
+            </div>
+
+            <div class="d-grid mt-2">
+                <button type="submit" class="btn btn-signin-custom">
+                    Secure Sign In
+                </button>
+            </div>
+        </form>
     </div>
 
-    <!-- Bootstrap Core JS Scripts -->
-    <script src="https://jsdelivr.net"></script>
+    <!-- Bootstrap 5 JavaScript Bundle Link for handling interactive alert clearances natively -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

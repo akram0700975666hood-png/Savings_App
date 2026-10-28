@@ -45,20 +45,23 @@
                     <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-4">User ID</th>
+                                <!-- Changed from User ID to a generic sequence number header -->
+                                <th class="ps-4">No.</th>
                                 <th>Username</th>
                                 <th>Primary Contact</th>
                                 <th>Next of Kin (Optional)</th>
                                 <th>System Role</th>
                                 <th>Account Status</th>
                                 <th>Connection State</th>
+                                <th>Policy Signature</th>
                                 <th class="pe-4 text-end">Actions</th>
                             </tr>
                         </thead>
-                                                <tbody>
+
+                        <tbody>
                             {% for member in members %}
                             <tr>
-                                <td class="ps-4 fw-bold text-secondary">#{{ member.user_id }}</td>
+                                <td class="ps-4 fw-bold text-secondary">#{{ loop.index }}</td>
                                 <td>{{ member.username }}</td>
                                 <td>
                                     {% if member.contact_info and member.contact_info != 'No Contact' %}
@@ -105,7 +108,27 @@
                                         <span class="badge bg-secondary">○ Offline</span>
                                     {% endif %}
                                 </td>
-                                                                <td class="pe-4 text-end">
+                                <!-- ======================================================================== -->
+                                <!-- RESTORED DYNAMIC AGREEMENT STATUS SLIP DOWNLOAD TRACKING COLUMN -->
+                                <!-- ======================================================================== -->
+                                <td>
+                                    {% if member.role | lower in ['admin', 'super_admin'] %}
+                                        <span class="text-muted small" style="font-style: italic; font-size: 0.8rem;">Admin Bypass</span>
+                                    {% elif member.terms_accepted == 1 or member.terms_accepted == true or member.terms_accepted | string == '1' %}
+                                        <div class="d-flex flex-column">
+                                            <span class="text-success fw-bold" style="font-size: 0.8rem;">✓ Signed Policy</span>
+                                            <!-- FIX: Removed target="_blank" so this link loads inside your parent browser window natively -->
+                                            <a href="{{ url_for('admin_view_policy', target_user_id=member.user_id) }}" class="small text-primary text-decoration-none fw-semibold mt-1" style="font-size: 0.75rem;">
+                                                📄 Download Document
+                                            </a>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-danger fw-semibold" style="font-size: 0.8rem;">X Pending Sign</span>
+                                    {% endif %}
+                                </td>
+
+
+                                <td class="pe-4 text-end">
                                     <!-- ⚙️ UNIFIED CONTEXTUAL ACTIONS DROPDOWN MENUS CONTAINER -->
                                     <div class="dropdown d-inline-block">
                                         <!-- Configured to use a fixed positioning strategy to completely overlay above table borders -->

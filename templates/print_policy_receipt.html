@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunday Savings - Policy Signature Receipt</title>
+    <!-- Bootstrap 5 CSS CDN link -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333333;
+        }
+        .receipt-container {
+            max-width: 650px;
+            margin: 3rem auto;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .receipt-header {
+            border-bottom: 2px solid #198754;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        .audit-badge {
+            background-color: #e8f5e9;
+            color: #1b5e20;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .audit-badge.missing {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .meta-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        .meta-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #212529;
+        }
+        .terms-summary-box {
+            background-color: #f8f9fa;
+            border: 1px dashed #ced4da;
+            border-radius: 8px;
+            padding: 1.25rem;
+            font-size: 0.85rem;
+            color: #495057;
+            line-height: 1.5;
+        }
+        .signature-line {
+            border-top: 1px solid #495057;
+            width: 200px;
+            margin-top: 3rem;
+        }
+        
+        /* Strict clean print media parameters configuration overrides */
+        @media print {
+            body {
+                background-color: #ffffff;
+            }
+            .receipt-container {
+                margin: 0;
+                padding: 0;
+                border: none;
+                box-shadow: none;
+                max-width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="receipt-container">
+            
+           <!-- Audit Document Header Navigation Elements Panel -->
+            <div class="receipt-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="fw-bold text-success mb-1">Sunday Savings System</h4>
+                    <p class="text-muted small mb-0">Policy Agreement Signature Ledger Slip</p>
+                </div>
+                <div>
+                    <!-- FIX: Replaced the broken duplicate tag with a clean standard statement condition -->
+                    {% if member.terms_accepted %}
+                        <span class="audit-badge">✓ Verified Signed</span>
+                    {% else %}
+                        <span class="audit-badge missing">✗ Unsigned Profile</span>
+                    {% endif %}
+                </div>
+            </div>
+
+
+            <!-- Meta Parameters Profile Table Registry Layout -->
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="meta-label">Account Full Name</div>
+                    <div class="meta-value">{{ member.full_name }}</div>
+                </div>
+                <div class="col-6">
+                    <div class="meta-label">System Username</div>
+                    <div class="meta-value">@{{ member.username }}</div>
+                </div>
+                <div class="col-6">
+                    <div class="meta-label">Primary Contact info</div>
+                    <div class="meta-value">{{ member.contact_info if member.contact_info else 'N/A' }}</div>
+                </div>
+                <div class="col-6">
+                    <div class="meta-label">System Identifier</div>
+                    <div class="meta-value">Member Block #{{ member.user_id }}</div>
+                </div>
+            </div>
+
+            <!-- Historical Vault Archive Verification Timeline Log Area -->
+            <div class="card bg-light border-0 rounded-3 p-3 mb-4">
+                <div class="row text-center">
+                    <div class="col-6 border-end">
+                        <div class="small text-muted mb-1">Signature Timestamp Log</div>
+                        <div class="fw-bold text-dark small">{{ member.agreed_at if member.terms_accepted else 'No Signature Logged' }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted mb-1">Audit Generation Time</div>
+                        <div class="fw-bold text-dark small">{{ generation_time }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Explicit Legal Covenant Abstract Block -->
+            <h6 class="fw-bold text-dark mb-2">Covenant Summary Abstract:</h6>
+            <div class="terms-summary-box mb-4">
+                By ticking the mandatory check blocks and executing the digital portal login key signature dispatch routing criteria, the authenticated member profile listed above explicitly agreed to follow the project's parameters. They acknowledged that no individual personal loans or early emergency capital withdrawals will be granted from group cash balances during the operational sequence run. They also agreed that the total logged savings register will remain locked down until the annual settlement distribution rollover in December.
+            </div>
+
+                    <!-- Visual Print Verification Sign Blocks Footer Area -->
+            <div class="row mt-5 pt-3">
+                <!-- LEFT SIDE: REALISTIC HANDWRITTEN MEMBER SIGNATURE CAPTURE BOX -->
+                <div class="col-6">
+                    <div class="p-3 border rounded-3 position-relative overflow-hidden" style="height: 90px; border-style: dashed !important; background-color: #fafbfc !important;">
+                        <span class="position-absolute start-0 top-0 m-1 text-uppercase text-muted opacity-25 font-monospace" style="font-size: 0.55rem; letter-spacing: 1px;">SECURE DIGITAL ID: #{{ member.user_id }}</span>
+                        <div class="text-center w-100 position-absolute start-50 top-50 translate-middle" style="font-family: 'Dancing Script', cursive; font-size: 1.8rem; color: #1a237e; transform: translate(-50%, -60%) rotate(-3deg) !important; letter-spacing: 0.5px;">
+                            {{ member.full_name }}
+                        </div>
+                    </div>
+                    <div class="signature-line" style="margin-top: 0.75rem; width: 100%;"></div>
+                    <div class="small text-muted mt-1 fw-semibold">Member Account Signature (Digitally Authenticated)</div>
+                </div>
+                
+                <!-- RIGHT SIDE: REGISTERED ADMINISTRATIVE SYSTEM WITNESSES DIRECTORY -->
+                <div class="col-6">
+                    <div class="p-2 border rounded-3 d-flex flex-column justify-content-center" style="height: 90px; background-color: #fdfdfe !important;">
+                        <div class="small fw-bold text-success mb-1 d-flex align-items-center" style="font-size: 0.75rem;">
+                            🛡️ SYSTEM REGISTERED WITNESSES:
+                        </div>
+                        <div class="lh-sm text-dark font-monospace" style="font-size: 0.75rem; max-height: 65px; overflow-y: auto;">
+                            <!-- DYNAMIC DATABASE GENERATED ADMIN LOOP -->
+                            {% if admins %}
+                                {% for admin in admins %}
+                                    <div class="d-flex align-items-center gap-1 my-1">
+                                        <span class="text-success">✔</span> <span>{{ admin.full_name }}</span>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <!-- Fallback tracking notice indicating missing data parameters -->
+                                <span class="text-danger small italic">No active admin profiles retrieved from server query context.</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="signature-line" style="margin-top: 0.75rem; width: 100%;"></div>
+                    <div class="small text-muted mt-1 fw-semibold">Authorized Audit Verification Panel Sign-off</div>
+                </div>
+            </div>
+
+
+            <!-- Dynamic System Call Action Interface Controls Button Panel -->
+            <div class="mt-4 pt-3 border-top text-end no-print">
+                <button onclick="window.history.back();" class="btn btn-outline-secondary me-2 px-3">
+                    ← Back to Profiles
+                </button>
+                <button onclick="window.print();" class="btn btn-success px-4 fw-bold shadow-sm">
+                    🖨️ Print Tracking Slip
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
