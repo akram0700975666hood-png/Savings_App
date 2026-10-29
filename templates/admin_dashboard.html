@@ -297,14 +297,11 @@
                                     </a>
                                 </div>
                                 <div class="col-6">
-                                    <!-- Form processing pipeline targeting the emergency bypass parameter -->
-                                    <form action="{{ url_for('year_end_payout') }}" method="POST" class="w-100 h-100">
-                                        <input type="hidden" name="skip_email" value="true">
-                                        <button type="submit" class="btn w-100 d-flex flex-column align-items-center justify-content-center shadow-sm border-0 h-100" style="background-color: #fef5d1; color: #664d03; height: 72px !important;">
-                                            <span class="fs-6 mb-1">⚠️</span>
-                                            <span class="fw-bold text-center lh-sm" style="font-size: 0.75rem;">Emergency<br><span class="text-muted font-weight-normal" style="font-size: 0.65rem;">Bypass Only</span></span>
-                                        </button>
-                                    </form>
+                                    <!-- SECURE EMERGENCY BYPASS LINK: Upgraded to open the verification gate modal instead of immediate submission -->
+                                    <button type="button" data-bs-toggle="modal" data-bs-target="#confirm-emergency-bypass-modal" class="btn w-100 d-flex flex-column align-items-center justify-content-center shadow-sm border-0 h-100" style="background-color: #fef5d1; color: #664d03; height: 72px !important;">
+                                        <span class="fs-6 mb-1">⚠️</span>
+                                        <span class="fw-bold text-center lh-sm" style="font-size: 0.75rem;">Emergency<br><span class="text-muted font-weight-normal" style="font-size: 0.65rem;">Bypass Only</span></span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -361,6 +358,48 @@
                         <input type="hidden" name="skip_email" value="false">
                         <button type="submit" class="btn btn-danger px-4 py-2 fw-bold border-0 shadow-sm small" style="background-color: #dc3545; font-size: 0.8rem;">
                             🚀 Yes, Execute Settlement
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================== -->
+    <!-- ADMINISTRATIVE CONFIRMATION MODAL: EMERGENCY BYPASS RESET RUN -->
+    <!-- ======================================================================== -->
+    <div class="modal fade" id="confirm-emergency-bypass-modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="confirmEmergencyBypassLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <!-- Modal Layout Content Header Box -->
+                <div class="modal-header border-0 bg-light py-3" style="border-radius: 20px 20px 0 0;">
+                    <div class="d-flex align-items-center">
+                        <span class="fs-4 me-2">⚠️</span>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="confirmEmergencyBypassLabel" style="font-size: 1.05rem;">Confirm Emergency Bypass</h5>
+                    </div>
+                    <button type="button" class="btn-close small p-2.5" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Modal Descriptive Summary Warn Panel Body -->
+                <div class="modal-body py-4 px-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <span class="fs-2 text-danger">🛑</span>
+                        <div>
+                            <h6 class="fw-bold text-danger mb-1" style="font-size: 0.95rem;">Critical Action Validation</h6>
+                            <p class="text-muted small mb-0" style="line-height: 1.5;">This operation cannot be reversed. Confirming will copy current calculated member totals into the archives and permanently purge your active deposits table down to zero. The automated email transmission workflow will be entirely bypassed.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Operational Route Action Form Controls Footer -->
+                <div class="modal-footer border-0 bg-light py-3 px-4 d-flex justify-content-between" style="border-radius: 0 0 20px 20px;">
+                    <button type="button" class="btn btn-secondary px-3.5 py-2 fw-bold border-0 shadow-sm small" data-bs-dismiss="modal" style="background-color: #e4e6eb; color: #4b4b4b; font-size: 0.8rem;">
+                        Cancel and Go Back
+                    </button>
+                    <form action="{{ url_for('year_end_payout') }}" method="POST" class="m-0">
+                        <input type="hidden" name="skip_email" value="true">
+                        <button type="submit" class="btn btn-danger px-4 py-2 fw-bold border-0 shadow-sm small" style="background-color: #dc3545; font-size: 0.8rem;">
+                            Yes, Confirm Bypass Reset
                         </button>
                     </form>
                 </div>

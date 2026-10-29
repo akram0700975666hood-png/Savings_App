@@ -31,14 +31,27 @@ app.secret_key = 'replace_this_with_a_secure_random_key_later'
 # 2. SYSTEM UTILITY & CONNECTIONS SECTION
 # ==========================================
 
+# def get_db_connection():
+#     """Establishes a clean bridge to your existing Laragon database."""
+#     return mysql.connector.connect(
+#         host="localhost",
+#         user="root",        # Your Laragon default user
+#         password="",        # Your Laragon default password (usually empty)
+#         database="sunday_savings_db"
+#     )
+
 def get_db_connection():
-    """Establishes a clean bridge to your existing Laragon database."""
+    """Establishes an environment-driven production connection bridge to your cloud database."""
+    # This reads parameters from Render's secure server memory settings, defaulting to local Laragon parameters if absent
+    import os
     return mysql.connector.connect(
-        host="localhost",
-        user="root",        # Your Laragon default user
-        password="",        # Your Laragon default password (usually empty)
-        database="sunday_savings_db"
+        host=os.environ.get('DB_HOST', 'localhost'),
+        user=os.environ.get('DB_USER', 'root'),
+        password=os.environ.get('DB_PASSWORD', ''),
+        database=os.environ.get('DB_NAME', 'sunday_savings_db'),
+        port=int(os.environ.get('DB_PORT', 3306))
     )
+
 
 def send_system_email(recipient_email, subject, body_content):
     """Utility function to pull contact details and route automated system emails safely."""
@@ -579,7 +592,7 @@ def archive_rollover():
 
 @app.route('/admin/logs')
 def view_logs():
-    """Pulls historical year-end payout data sheets to view community lifecycle metrics."""
+    """Pulls historical year-end payout data sheets to view community lifecycle metrics with dynamic year filtering."""
     if 'user_id' not in session:
         return redirect(url_for('login'))
         
@@ -587,16 +600,47 @@ def view_logs():
     if user_role not in ['admin', 'super_admin']:
         return redirect(url_for('login'))
         
+    # Get the target filter year from the URL query arguments (defaults to current year)
+    current_date = datetime.now()
+    selected_year = request.args.get('filter_year')
+    if selected_year:
+        selected_year = int(selected_year)
+    else:
+        selected_year = current_date.year
+        
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Query all historical metrics out from your year_end_archive architecture layout
-    cursor.execute("SELECT * FROM year_end_archive ORDER BY archive_year DESC, archived_at DESC")
+    # 1. Fetch all unique archive years available in the database to build the dropdown options
+    cursor.execute("SELECT DISTINCT archive_year FROM year_end_archive ORDER BY archive_year DESC")
+    available_years_rows = cursor.fetchall()
+    available_years = [row['archive_year'] for row in available_years_rows]
+    
+    # Fail-safe: Ensure the current year is in the list even if no entries exist yet
+    if selected_year not in available_years:
+        available_years.append(selected_year)
+    available_years.sort(reverse=True)
+    
+    # 2. Fetch the specific historical metrics filtered by the selected year parameter
+    query_logs = """
+        SELECT * FROM year_end_archive 
+        WHERE archive_year = %s 
+        ORDER BY archived_at DESC, member_name ASC
+    """
+    cursor.execute(query_logs, (selected_year,))
     archive_logs = cursor.fetchall()
     
     cursor.close()
     conn.close()
-    return render_template('view_logs.html', logs=archive_logs, username=session['username'])
+    
+    return render_template(
+        'view_logs.html', 
+        logs=archive_logs, 
+        username=session['username'],
+        available_years=available_years,
+        selected_year=selected_year
+    )
+
 
 @app.route('/admin/complaints/clear/<int:complaint_id>', methods=['POST'])
 def clear_complaint(complaint_id):
@@ -1076,9 +1120,34 @@ def year_end_payout():
         current_year = datetime.now().year
 
         # ========================================================
-        # PATHWAY A: EMERGENCY BYPASS (RESET AND CLEAR LEDGER ONLY)
+        # PATHWAY A: EMERGENCY BYPASS (ARCHIVE, RESET AND CLEAR LEDGER ONLY)
         # ========================================================
         if skip_email_param:
+            # FIX: Sum up all deposits per member to get their single annual total balance
+            query_totals = """
+                SELECT u.username AS member_name, SUM(d.amount) AS total_saved
+                FROM deposits d
+                JOIN users u ON d.member_id = u.user_id
+                GROUP BY d.member_id
+            """
+            cursor.execute(query_totals)
+            member_balances = cursor.fetchall()
+
+            # Replicate compressed row balance records into archive if records exist
+            if member_balances:
+                insert_archive = """
+                    INSERT INTO year_end_archive (archive_year, member_name, total_amount_saved)
+                    VALUES (%s, %s, %s)
+                """
+                for balance in member_balances:
+                    if balance['total_saved'] is not None and float(balance['total_saved']) > 0:
+                        cursor.execute(insert_archive, (
+                            current_year, 
+                            balance['member_name'], 
+                            float(balance['total_saved'])
+                        ))
+
+            # Clear out active contributions ledger row records so the new year starts at zero
             cursor.execute("DELETE FROM deposits")
             # Reset increment counter targets to keep sequence numbers orderly
             cursor.execute("ALTER TABLE deposits AUTO_INCREMENT = 1")
@@ -1087,7 +1156,7 @@ def year_end_payout():
             # Clear any old warning list from session memory so the banner disappears
             session.pop('missing_email_usernames', None)
             
-            flash(f"Success! Year-end ledger reset complete. Financial logs for {current_year} cleared down to UGX 0 (Automated messaging pipeline was bypassed).", "success")
+            flash(f"Success! Year-end ledger reset complete. Financial logs for {current_year} archived and cleared down to UGX 0 (Automated messaging pipeline was bypassed).", "success")
             return redirect(url_for('admin_dashboard'))
 
         # ========================================================
@@ -1184,7 +1253,6 @@ Sunday Savings System Management"""
         conn.close()
 
     return redirect(url_for('admin_dashboard'))
-
 
 # ==========================================
 # 4. DIRECT IN-APP NOTIFICATION SYSTEM ROUTING CONTROLLERS
